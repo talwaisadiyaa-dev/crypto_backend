@@ -1,0 +1,3 @@
+node_modules/
+crypto-frontend/node_modules/
+.env

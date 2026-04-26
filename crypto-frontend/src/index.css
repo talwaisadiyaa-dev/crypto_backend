@@ -1,0 +1,84 @@
+/* Tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Floating Animation */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Card Hover Effect */
+.card-hover {
+  transition: all 0.3s ease;
+}
+.card-hover:hover {
+  transform: scale(1.05) rotateX(4deg) rotateY(4deg);
+}
+
+/* Glass UI Effect */
+.glass-card {
+  @apply bg-white/70 backdrop-blur-lg border border-blue-200 
+  rounded-2xl p-6 shadow-md hover:shadow-blue-200 transition;
+}
+
+.glass-box {
+  @apply bg-white/70 backdrop-blur-lg border border-blue-200 
+  rounded-2xl p-4 shadow-md;
+}
+
+/* Background Animation */
+@keyframes backgroundAnimation {
+  0% {
+    background: linear-gradient(135deg, #eaf3ff, #d0eaff);
+  }
+  100% {
+    background: linear-gradient(135deg, #d0eaff, #eaf3ff);
+  }
+}
+
+/* Applying background animation for elements with class bg-animated */
+.bg-animated {
+  animation: backgroundAnimation 5s infinite alternate;
+}
+
+/* Tailwind Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #2563eb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4f81e8;
+}
+
+/* Button Style */
+.btn {
+  @apply px-6 py-3 bg-blue-500 text-white rounded-full font-semibold shadow-md hover:bg-blue-600 transition duration-300;
+}
+
+/* Tailwind Custom Gradient Background */
+.bg-gradient-custom {
+  background: linear-gradient(135deg, #eaf3ff, #d0eaff);
+}
+
+/* Additional custom styles */
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}

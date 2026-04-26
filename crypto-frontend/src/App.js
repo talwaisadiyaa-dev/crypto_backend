@@ -23,7 +23,7 @@ function App() {
   const logout = () => {
     localStorage.removeItem("userId");
     toast.success("Logged out 👋");
-    navigate("/login"); // ✅ FIXED
+    navigate("/login");
   };
 
   // 👀 Hide navbar on landing + auth
@@ -32,7 +32,7 @@ function App() {
 
   return (
     <div className={dark ? "bg-slate-900 text-white" : "bg-gray-50 text-black"}>
-      
+
       {/* 🔥 TOASTER */}
       <Toaster position="top-right" />
 
@@ -54,6 +54,11 @@ function App() {
           <div className="flex items-center gap-6">
             <Link to="/home" className={navLink}>
               Home
+            </Link>
+
+            {/* 📰 News — visible to all */}
+            <Link to="/news" className={navLink}>
+              News
             </Link>
 
             {/* 🔥 Protected Links */}
@@ -90,6 +95,9 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/home" element={<Home />} />
 
+        {/* 📰 News Route — public */}
+
+
         {/* 🔥 Coin Details */}
         <Route path="/coin/:id" element={<CoinDetails />} />
 
@@ -112,14 +120,14 @@ function App() {
           }
         />
 
-        {/* ✅ FIXED ROUTE */}
+        {/* ✅ Auth Route */}
         <Route path="/login" element={<Auth />} />
       </Routes>
 
       {/* 💎 FOOTER */}
       {!hideNavbar && (
         <p className="text-center text-gray-400 text-sm py-6">
-          Built with  by sadiya • CryptoTrack Pro
+          Built with ❤️ by sadiya • CryptoTrack Pro
         </p>
       )}
     </div>

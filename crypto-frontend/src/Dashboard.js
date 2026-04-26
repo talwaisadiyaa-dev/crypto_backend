@@ -9,7 +9,7 @@ import jsPDF from "jspdf";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import autoTable from "jspdf-autotable";
-
+const API_URL = "https://crypto-backend-2ryf.onrender.com/api";
 /* ========================= CONSTANTS ========================= */
 const COLORS = ["#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#06B6D4", "#8B5CF6", "#EC4899", "#14B8A6"];
 
@@ -108,7 +108,11 @@ function TradeModal({ item, mode, onClose, onDone }) {
     const userId = localStorage.getItem("userId");
     setLoading(true);
     try {
-      await fetch(isBuy ? "http://localhost:5000/api/portfolio/buy" : "http://localhost:5000/api/portfolio/sell", {
+    await fetch(
+  isBuy 
+    ? `${API_URL}/portfolio/buy` 
+    : `${API_URL}/portfolio/sell`,
+{
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ coin: item.coin, price: execPrice, quantity: Number(qty), userId, orderType }),
@@ -255,7 +259,7 @@ export default function Dashboard() {
     try {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
-      const res  = await fetch(`http://localhost:5000/api/portfolio/${userId}`);
+      const res  = await fetch(`${API_URL}/portfolio/${userId}`);
       const data = await res.json();
       if (!data || data.length === 0) { setPortfolio([]); return; }
       const coinIds  = data.map(i => i.coin?.toLowerCase()).filter(Boolean).join(",");
@@ -274,7 +278,7 @@ export default function Dashboard() {
     const fetchHistory = async () => {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
-      const res = await fetch(`http://localhost:5000/api/transactions/${userId}`);
+      const res = await fetch(`${API_URL}/transactions/${userId}`);
       setHistory(await res.json());
     };
     fetchHistory();
@@ -303,7 +307,7 @@ export default function Dashboard() {
   /* ========================= DELETE ========================= */
   const deleteCoin = async (id) => {
     try {
-      await fetch(`http://localhost:5000/api/portfolio/${id}`, { method: "DELETE" });
+      await fetch(`${API_URL}/portfolio/${id}`, { method: "DELETE" });
       setPortfolio(prev => prev.filter(c => c._id !== id));
       toast.success("Deleted ✅");
     } catch { toast.error("Delete failed ❌"); }
@@ -334,7 +338,7 @@ export default function Dashboard() {
     if (!userId) return toast.error("Login required");
     setAddLoading(true);
     try {
-      await fetch("http://localhost:5000/api/portfolio/buy", {
+      await fetch(`${API_URL}/portfolio/buy`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ coin: selectedCoin.id, price: Number(addPrice), quantity: Number(addQty), userId }),
       });

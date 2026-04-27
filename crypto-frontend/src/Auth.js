@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { FaLock, FaEye, FaEyeSlash, FaEnvelope } from "react-icons/fa";
 
+const BASE_URL = "https://crypto-backend-2ryf.onrender.com";
+
 function Auth() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
@@ -56,7 +58,7 @@ function Auth() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email, password: formData.password })
@@ -81,7 +83,7 @@ function Auth() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
+      const res = await fetch(`${BASE_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email, password: formData.password })

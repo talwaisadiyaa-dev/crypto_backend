@@ -1,222 +1,217 @@
+import { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer
-} from "recharts";
+import { ThemeContext } from "./ThemeContext";
+import { Toaster, toast } from "react-hot-toast";
+import CoinChart from "./CoinChart";
 
-export default function CoinDetails() {
-  const { id } = useParams();
+function CoinDetails() {
+  const { id: coinId } = useParams();
   const navigate = useNavigate();
+  const { dark } = useContext(ThemeContext);
 
   const [coin, setCoin] = useState(null);
-  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 🔥 FETCH COIN DETAILS
+  // Fetch coin details from CoinGecko API
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCoinDetails = async () => {
       try {
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${id}`
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`
         );
-        const data = await res.json();
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch coin details");
+        }
+
+        const data = await response.json();
         setCoin(data);
-      } catch {
-        toast.error("Error loading coin ❌");
-      }
-    };
-
-    fetchData();
-  }, [id]);
-
-  // 📊 FETCH CHART
-  useEffect(() => {
-    const fetchChart = async () => {
-      try {
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=7`
-        );
-        const data = await res.json();
-
-        const formatted = data.prices?.map((p) => ({
-          time: new Date(p[0]).toLocaleDateString(),
-          price: p[1],
-        })) || [];
-
-        setChartData(formatted);
-      } catch {
-        console.log("Chart error");
+      } catch (err) {
+        setError(err.message);
+        toast.error("Error fetching coin details");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchChart();
-  }, [id]);
-
-  // 🚀 ADD TO PORTFOLIO
-  const addToPortfolio = async () => {
-    const userId = localStorage.getItem("userId");
-
-    if (!userId) return toast.error("Login required ❌");
-
-    try {
-      await fetch("http://localhost:5000/api/portfolio", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          coin: coin.id,
-          price: coin.market_data?.current_price?.usd || 0,
-          quantity: 1,
-          image: coin.image?.small,
-          userId,
-        }),
-      });
-
-      toast.success("Added to Portfolio 🚀");
-    } catch {
-      toast.error("Error ❌");
+    if (coinId) {
+      fetchCoinDetails();
     }
-  };
+  }, [coinId]);
 
-  if (loading || !coin) {
+  if (loading) {
     return (
-      <p className="text-center mt-10 text-gray-500 animate-pulse">
-        Loading...
-      </p>
+      <div className={`flex justify-center items-center h-screen ${dark ? "bg-slate-900" : "bg-gray-50"}`}>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500"></div>
+      </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-violet-100 p-6">
+  if (error || !coin) {
+    return (
+      <div className={`min-h-screen ${dark ? "bg-slate-900 text-white" : "bg-gray-50 text-black"} flex flex-col justify-center items-center`}>
+        <h1 className="text-3xl font-bold mb-4">❌ Error</h1>
+        <p className="text-lg mb-6">{error || "Coin not found"}</p>
+        <button
+          onClick={() => navigate("/home")}
+          className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
+  }
 
-      {/* 🔙 BACK */}
+  const currentPrice = coin.market_data?.current_price?.usd || 0;
+  const marketCap = coin.market_data?.market_cap?.usd || 0;
+  const volume24h = coin.market_data?.total_volume?.usd || 0;
+  const priceChange24h = coin.market_data?.price_change_percentage_24h || 0;
+  const marketCapRank = coin.market_cap_rank || "N/A";
+  const highestPrice = coin.market_data?.high_24h?.usd || 0;
+  const lowestPrice = coin.market_data?.low_24h?.usd || 0;
+  const totalSupply = coin.market_data?.total_supply || 0;
+  const circulatingSupply = coin.market_data?.circulating_supply || 0;
+
+  return (
+    <div className={`min-h-screen ${dark ? "bg-slate-900 text-white" : "bg-gray-50 text-black"} py-8 px-4 md:px-8`}>
+      <Toaster position="top-right" />
+
+      {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 bg-white px-4 py-2 rounded-lg shadow hover:scale-105 transition"
+        className={`mb-6 px-4 py-2 rounded-lg font-semibold transition ${
+          dark
+            ? "bg-slate-800 hover:bg-slate-700 text-white"
+            : "bg-gray-200 hover:bg-gray-300 text-black"
+        }`}
       >
-        ⬅ Back
+        ← Back
       </button>
 
-      {/* 🔥 HEADER */}
-      <div className="text-center mb-8">
-        <img
-          src={coin.image?.large}
-          alt={coin.name}
-          className="w-16 mx-auto mb-2 animate-bounce"
-        />
-        <h1 className="text-3xl font-bold">{coin.name}</h1>
-        <p className="text-gray-500 uppercase">{coin.symbol}</p>
+      {/* Header Section */}
+      <div className={`rounded-2xl p-8 mb-8 ${dark ? "bg-slate-800" : "bg-white"} shadow-lg`}>
+        <div className="flex items-center gap-4 mb-6">
+          {coin.image?.large && (
+            <img src={coin.image.large} alt={coin.name} className="w-16 h-16" />
+          )}
+          <div>
+            <h1 className="text-4xl font-bold">{coin.name}</h1>
+            <p className="text-xl text-gray-400 uppercase">{coin.symbol}</p>
+          </div>
+          <span className={`ml-auto px-4 py-2 rounded-full text-lg font-bold ${
+            priceChange24h >= 0
+              ? "bg-green-500/20 text-green-400"
+              : "bg-red-500/20 text-red-400"
+          }`}>
+            {priceChange24h >= 0 ? "▲" : "▼"} {priceChange24h.toFixed(2)}%
+          </span>
+        </div>
+
+        {/* Price Info */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className={`p-4 rounded-lg ${dark ? "bg-slate-700" : "bg-gray-100"}`}>
+            <p className="text-sm text-gray-400 mb-2">Current Price</p>
+            <p className="text-2xl font-bold text-pink-500">${currentPrice.toLocaleString()}</p>
+          </div>
+
+          <div className={`p-4 rounded-lg ${dark ? "bg-slate-700" : "bg-gray-100"}`}>
+            <p className="text-sm text-gray-400 mb-2">24h High</p>
+            <p className="text-2xl font-bold">${highestPrice.toLocaleString()}</p>
+          </div>
+
+          <div className={`p-4 rounded-lg ${dark ? "bg-slate-700" : "bg-gray-100"}`}>
+            <p className="text-sm text-gray-400 mb-2">24h Low</p>
+            <p className="text-2xl font-bold">${lowestPrice.toLocaleString()}</p>
+          </div>
+
+          <div className={`p-4 rounded-lg ${dark ? "bg-slate-700" : "bg-gray-100"}`}>
+            <p className="text-sm text-gray-400 mb-2">Market Cap Rank</p>
+            <p className="text-2xl font-bold text-blue-400">#{marketCapRank}</p>
+          </div>
+        </div>
       </div>
 
-      {/* 💰 MAIN CARD */}
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition">
+      {/* Market Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className={`rounded-2xl p-8 ${dark ? "bg-slate-800" : "bg-white"} shadow-lg`}>
+          <h2 className="text-2xl font-bold mb-6">Market Information</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Market Cap</span>
+              <span className="font-bold text-lg">${(marketCap / 1e9).toFixed(2)}B</span>
+            </div>
+            <hr className={dark ? "border-slate-700" : "border-gray-200"} />
 
-        {/* PRICE STATS */}
-        <div className="grid md:grid-cols-3 gap-6 text-center mb-6">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">24h Volume</span>
+              <span className="font-bold text-lg">${(volume24h / 1e9).toFixed(2)}B</span>
+            </div>
+            <hr className={dark ? "border-slate-700" : "border-gray-200"} />
 
-          <div className="bg-blue-50 p-4 rounded-xl">
-            <p className="text-gray-500">Price</p>
-            <h2 className="text-xl font-bold">
-              ${coin.market_data?.current_price?.usd
-                ? coin.market_data.current_price.usd.toFixed(2)
-                : "0.00"}
-            </h2>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Circulating Supply</span>
+              <span className="font-bold text-lg">{circulatingSupply.toLocaleString()}</span>
+            </div>
+            <hr className={dark ? "border-slate-700" : "border-gray-200"} />
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Total Supply</span>
+              <span className="font-bold text-lg">{totalSupply ? totalSupply.toLocaleString() : "N/A"}</span>
+            </div>
           </div>
-
-          <div className="bg-green-50 p-4 rounded-xl">
-            <p className="text-gray-500">Market Cap</p>
-            <h2 className="text-xl font-bold">
-              ${coin.market_data?.market_cap?.usd
-                ? coin.market_data.market_cap.usd.toLocaleString()
-                : "0"}
-            </h2>
-          </div>
-
-          <div className="bg-yellow-50 p-4 rounded-xl">
-            <p className="text-gray-500">Rank</p>
-            <h2 className="text-xl font-bold">
-              #{coin.market_cap_rank || "N/A"}
-            </h2>
-          </div>
-
         </div>
 
-        {/* 📊 CHART */}
-        <div className="bg-gray-50 p-4 rounded-xl mb-6">
-          <h3 className="font-bold mb-3 text-center">
-            📈 7 Day Price Chart
-          </h3>
+        {/* Links and Info */}
+        <div className={`rounded-2xl p-8 ${dark ? "bg-slate-800" : "bg-white"} shadow-lg`}>
+          <h2 className="text-2xl font-bold mb-6">Additional Info</h2>
+          <div className="space-y-4">
+            {coin.homepage && coin.homepage[0] && (
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Website</p>
+                <a
+                  href={coin.homepage[0]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-pink-500 hover:text-pink-400 break-all"
+                >
+                  {coin.homepage[0]}
+                </a>
+              </div>
+            )}
 
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <XAxis dataKey="time" hide />
-              <YAxis hide />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#6366F1"
-                strokeWidth={3}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+            {coin.links?.blockchain_site && coin.links.blockchain_site[0] && (
+              <div>
+                <p className="text-sm text-gray-400 mb-2">Blockchain Explorer</p>
+                <a
+                  href={coin.links.blockchain_site[0]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-pink-500 hover:text-pink-400 break-all"
+                >
+                  View on Explorer
+                </a>
+              </div>
+            )}
+
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Description</p>
+              <p className="text-sm leading-relaxed">{coin.description?.en?.slice(0, 200) || "No description available"}...</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* EXTRA DETAILS */}
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
-
-          <div className="bg-gray-100 p-3 rounded">
-            📈 High 24h: $
-            {coin.market_data?.high_24h?.usd
-              ? coin.market_data.high_24h.usd.toFixed(2)
-              : "0.00"}
-          </div>
-
-          <div className="bg-gray-100 p-3 rounded">
-            📉 Low 24h: $
-            {coin.market_data?.low_24h?.usd
-              ? coin.market_data.low_24h.usd.toFixed(2)
-              : "0.00"}
-          </div>
-
-          <div className="bg-gray-100 p-3 rounded">
-            🔄 Supply:{" "}
-            {coin.market_data?.circulating_supply
-              ? coin.market_data.circulating_supply.toLocaleString()
-              : "N/A"}
-          </div>
-
-          <div className="bg-gray-100 p-3 rounded">
-            💎 ATH: $
-            {coin.market_data?.ath?.usd
-              ? coin.market_data.ath.usd.toFixed(2)
-              : "0.00"}
-          </div>
-
-        </div>
-
-        {/* 🚀 ADD BUTTON */}
-        <button
-          onClick={addToPortfolio}
-          className="mt-6 w-full bg-green-600 text-white py-3 rounded-lg hover:scale-105 transition"
-        >
-          Add to Portfolio 🚀
-        </button>
-
-        {/* 🧠 DESCRIPTION */}
-        <div className="mt-6 text-sm text-gray-600">
-          <h3 className="font-bold mb-2">About</h3>
-          <p>
-            {coin.description?.en
-              ? coin.description.en.slice(0, 250) + "..."
-              : "No description available"}
-          </p>
-        </div>
-
+      {/* Chart Section */}
+      <div className={`rounded-2xl p-8 ${dark ? "bg-slate-800" : "bg-white"} shadow-lg`}>
+        <h2 className="text-2xl font-bold mb-6">Price Chart (7 Days)</h2>
+        <CoinChart coinId={coinId} dark={dark} />
       </div>
     </div>
   );
 }
+
+export default CoinDetails;

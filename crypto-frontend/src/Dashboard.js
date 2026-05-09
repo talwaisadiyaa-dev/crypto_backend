@@ -447,7 +447,7 @@ export default function Dashboard() {
     });
 
     const afterH = pdf.lastAutoTable.finalY;
-    const tBuy   = history.filter(h => h.type?.toLowerCase() === "buy") .reduce((a, h) => a + Number(h.price) * (h.quantity || h.qty || 0), 0);
+    const tBuy   = history.filter(h => h.type?.toLowerCase() === "buy").reduce((a, h) => a + Number(h.price) * (h.quantity || h.qty || 0), 0);
     const tSell  = history.filter(h => h.type?.toLowerCase() === "sell").reduce((a, h) => a + Number(h.price) * (h.quantity || h.qty || 0), 0);
 
     sec("Transaction Summary", afterH + 12);

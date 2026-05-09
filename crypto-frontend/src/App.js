@@ -13,6 +13,8 @@ import Landing from "./Landing";
 import CoinDetails from "./CoinDetails";
 
 import Converter from "./Converter"; // ✅ NEW
+import AiChat from "./AiChat";
+
 
 function App() {
   const { dark } = useContext(ThemeContext);
@@ -44,6 +46,8 @@ function App() {
           <div className="flex items-center gap-6">
             <Link to="/home"      className={navLink}>Home</Link>
             <Link to="/converter" className={navLink}>Converter</Link>
+            <Link to="/ai-chat">🤖 AI Chat</Link>
+
             
 
             {userId && (
@@ -71,6 +75,8 @@ function App() {
       
         <Route path="/converter" element={<Converter />} />
         <Route path="/coin/:id"  element={<CoinDetails />} />
+        <Route path="/ai-chat" element={<AiChat />} />
+
 
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />

@@ -11,12 +11,11 @@ app.use(express.json());
 const JWT_SECRET = "secret123";
 
 /* =========================
-   ✅ MONGODB CONNECITION 
-   */
+   ✅ MONGODB CONNECTION
+========================= */
 require("dotenv").config();
 
-
-console.log("MONGO_URL:", process.env.MONGO_URL); // debug
+console.log("MONGO_URL:", process.env.MONGO_URL);
 
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Atlas Connected ✅"))
@@ -24,12 +23,8 @@ mongoose.connect(process.env.MONGO_URL)
 
 const User = mongoose.model(
   "User",
-  new mongoose.Schema({
-    email: String,
-    password: String,
-  })
+  new mongoose.Schema({ email: String, password: String })
 );
-
 
 /* =========================
    💰 WATCHLIST SCHEMA
@@ -38,10 +33,10 @@ const Watch = mongoose.model(
   "Watch",
   new mongoose.Schema({
     coinName: String,
-    coinId: String,
-    amount: Number,
+    coinId:   String,
+    amount:   Number,
     buyPrice: Number,
-    userId: String,
+    userId:   String,
   })
 );
 
@@ -51,10 +46,10 @@ const Watch = mongoose.model(
 const Portfolio = mongoose.model(
   "Portfolio",
   new mongoose.Schema({
-    coin: String,
-    price: Number,
+    coin:     String,
+    price:    Number,
     quantity: Number,
-    userId: String,
+    userId:   String,
   })
 );
 
@@ -64,52 +59,42 @@ const Portfolio = mongoose.model(
 const Transaction = mongoose.model(
   "Transaction",
   new mongoose.Schema({
-    coin: String,
-    type: String, // BUY / SELL
-    price: Number,
-    quantity: Number,
-    userId: String,
-    date: { type: Date, default: Date.now },
+    coin:      String,
+    type:      String,
+    price:     Number,
+    quantity:  Number,
+    userId:    String,
+    orderType: String,
+    date:      { type: Date, default: Date.now },
   })
 );
 
 /* =========================
    🔐 AUTH
 ========================= */
-
-// SIGNUP
 app.post("/api/auth/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const exists = await User.findOne({ email });
     if (exists) return res.json({ message: "User exists ❌" });
-
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashed });
+    const user   = new User({ email, password: hashed });
     await user.save();
-
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
-
     res.json({ token, userId: user._id });
   } catch {
     res.status(500).json({ message: "Signup error ❌" });
   }
 });
 
-// LOGIN
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
     if (!user) return res.json({ message: "User not found ❌" });
-
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.json({ message: "Wrong password ❌" });
-
+    if (!ok)  return res.json({ message: "Wrong password ❌" });
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
-
     res.json({ token, userId: user._id });
   } catch {
     res.status(500).json({ message: "Login error ❌" });
@@ -119,30 +104,23 @@ app.post("/api/auth/login", async (req, res) => {
 /* =========================
    ⭐ WATCHLIST
 ========================= */
-
-// ADD
 app.post("/api/watchlist/add", async (req, res) => {
   try {
     const { coinName, coinId, amount, buyPrice, userId } = req.body;
-
     const exists = await Watch.findOne({ coinId, userId });
     if (exists) return res.json({ message: "Already added ⚠️" });
-
     await Watch.create({ coinName, coinId, amount, buyPrice, userId });
-
     res.json({ message: "Added ✅" });
   } catch {
     res.status(500).json({ message: "Error ❌" });
   }
 });
 
-// GET
 app.get("/api/watchlist/:userId", async (req, res) => {
   const data = await Watch.find({ userId: req.params.userId });
   res.json(data);
 });
 
-// DELETE
 app.delete("/api/watchlist/:id", async (req, res) => {
   await Watch.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted ✅" });
@@ -151,87 +129,66 @@ app.delete("/api/watchlist/:id", async (req, res) => {
 /* =========================
    💼 PORTFOLIO
 ========================= */
-
-// GET
 app.get("/api/portfolio/:userId", async (req, res) => {
   const data = await Portfolio.find({ userId: req.params.userId });
   res.json(data);
 });
 
-// BUY
 app.post("/api/portfolio/buy", async (req, res) => {
-  const { coin, price, quantity, userId } = req.body;
-
+  const { coin, price, quantity, userId, orderType } = req.body;
   try {
     const existing = await Portfolio.findOne({ coin, userId });
-
     if (existing) {
       const totalQty = existing.quantity + quantity;
-      const avgPrice =
-        (existing.price * existing.quantity + price * quantity) /
-        totalQty;
-
+      const avgPrice = (existing.price * existing.quantity + price * quantity) / totalQty;
       existing.quantity = totalQty;
-      existing.price = avgPrice;
-
+      existing.price    = avgPrice;
       await existing.save();
     } else {
       await Portfolio.create({ coin, price, quantity, userId });
     }
-
-    // ✅ SAVE TRANSACTION
-    await Transaction.create({
-      coin,
-      type: "BUY",
-      price,
-      quantity,
-      userId,
-    });
-
+    await Transaction.create({ coin, type: "BUY", price, quantity, userId, orderType: orderType || "market" });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Buy failed ❌" });
   }
 });
 
-// SELL
-app.post("/api/portfolio/sell", async (req, res) => {
-  const { coin, quantity, userId } = req.body;
+app.post("/api/ai/chat", async (req, res) => {
+  const { messages } = req.body;
 
   try {
-    const existing = await Portfolio.findOne({ coin, userId });
-
-    if (!existing) {
-      return res.status(404).json({ error: "Coin not found ❌" });
-    }
-
-    if (existing.quantity < quantity) {
-      return res.status(400).json({ error: "Not enough quantity ❌" });
-    }
-
-    existing.quantity -= quantity;
-
-    await Transaction.create({
-      coin,
-      type: "SELL",
-      price: existing.price,
-      quantity,
-      userId,
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: messages.map(m => ({
+          role: m.role === "model" ? "assistant" : m.role,
+          content: m.parts[0].text
+        })),
+      }),
     });
 
-    if (existing.quantity === 0) {
-      await Portfolio.deleteOne({ _id: existing._id });
-    } else {
-      await existing.save();
+    const data = await response.json();
+    console.log("Groq:", data);
+
+    const reply = data.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      return res.status(500).json({ error: "No reply ❌" });
     }
 
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Sell failed ❌" });
+    res.json({ reply });
+
+  } catch (err) {
+    console.log("AI ERROR:", err);
+    res.status(500).json({ error: "AI error ❌" });
   }
 });
-
-// DELETE PORTFOLIO
 app.delete("/api/portfolio/:id", async (req, res) => {
   await Portfolio.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted ✅" });
@@ -240,18 +197,73 @@ app.delete("/api/portfolio/:id", async (req, res) => {
 /* =========================
    📜 TRANSACTIONS
 ========================= */
-
 app.get("/api/transactions/:userId", async (req, res) => {
-  const data = await Transaction.find({ userId: req.params.userId })
-    .sort({ date: -1 });
-
+  const data = await Transaction.find({ userId: req.params.userId }).sort({ date: -1 });
   res.json(data);
+});
+
+/* =========================
+   🤖 AI CHAT (Gemini)
+========================= */
+app.post("/api/ai/chat", async (req, res) => {
+  const { messages } = req.body;
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Invalid messages ❌" });
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_KEY}`,
+      {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{
+              text: `You are CryptoAI — an expert cryptocurrency assistant for CryptoTrack Pro app.
+You help users with:
+- Crypto price analysis and market trends
+- Portfolio management advice (buy/sell/hold)
+- Explanation of blockchain concepts
+- DeFi, NFT, and Web3 questions
+- Risk assessment and investment strategies
+- Understanding crypto terms and indicators
+
+Keep responses concise, friendly, and actionable.
+Use emojis occasionally to make responses engaging.
+Format important points with bullet points when needed.
+Always remind users that crypto is volatile and to do their own research (DYOR).`
+            }]
+          },
+          contents: messages,
+          generationConfig: {
+            temperature:     0.7,
+            maxOutputTokens: 600,
+          },
+        }),
+      }
+    );
+
+    const data  = await response.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!reply) {
+      console.log("Gemini error:", JSON.stringify(data));
+      return res.status(500).json({ error: "No reply from AI" });
+    }
+
+    res.json({ reply });
+
+  } catch (err) {
+    console.log("AI route error:", err);
+    res.status(500).json({ error: "AI error ❌" });
+  }
 });
 
 /* =========================
    🚀 START SERVER
 ========================= */
-
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running 🚀");
 });

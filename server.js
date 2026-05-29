@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const JWT_SECRET = "secret123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /* =========================
    ✅ MONGODB CONNECTION
@@ -136,23 +136,110 @@ app.get("/api/portfolio/:userId", async (req, res) => {
 
 app.post("/api/portfolio/buy", async (req, res) => {
   const { coin, price, quantity, userId, orderType } = req.body;
+
+  const normalizedCoin = coin.toLowerCase();
+
   try {
-    const existing = await Portfolio.findOne({ coin, userId });
+    const existing = await Portfolio.findOne({
+      coin: normalizedCoin,
+      userId
+    });
+
     if (existing) {
       const totalQty = existing.quantity + quantity;
-      const avgPrice = (existing.price * existing.quantity + price * quantity) / totalQty;
+
+      const avgPrice =
+        (existing.price * existing.quantity + price * quantity) / totalQty;
+
       existing.quantity = totalQty;
-      existing.price    = avgPrice;
+      existing.price = avgPrice;
+
       await existing.save();
+
     } else {
-      await Portfolio.create({ coin, price, quantity, userId });
+
+      await Portfolio.create({
+        coin: normalizedCoin,
+        price,
+        quantity,
+        userId
+      });
     }
-    await Transaction.create({ coin, type: "BUY", price, quantity, userId, orderType: orderType || "market" });
+
+    await Transaction.create({
+      coin: normalizedCoin,
+      type: "buy",
+      price,
+      quantity,
+      userId,
+      orderType: orderType || "market"
+    });
+
     res.json({ success: true });
-  } catch {
+
+  } catch (err) {
+    console.log(err);
     res.status(500).json({ error: "Buy failed ❌" });
   }
 });
+app.post("/api/portfolio/sell", async (req, res) => {
+
+  const { coin, price, quantity, userId, orderType } = req.body;
+
+  const normalizedCoin = coin.toLowerCase();
+
+  try {
+
+    const existing = await Portfolio.findOne({
+      coin: normalizedCoin,
+      userId
+    });
+
+    if (!existing) {
+      return res.status(400).json({
+        error: "Coin not in portfolio ❌"
+      });
+    }
+
+    if (existing.quantity < quantity) {
+      return res.status(400).json({
+        error: "Insufficient quantity ❌"
+      });
+    }
+
+    existing.quantity -= quantity;
+
+    if (existing.quantity === 0) {
+      await Portfolio.findByIdAndDelete(existing._id);
+    } else {
+      await existing.save();
+    }
+
+    console.log("Before transaction save");
+
+    await Transaction.create({
+      coin: coin.toLowerCase(),
+      type: "sell",
+      price,
+      quantity,
+      userId,
+      orderType: orderType || "market"
+    });
+
+    console.log("Transaction saved");
+
+    res.json({ success: true });
+
+  } catch (err) {
+
+    console.log("SELL ERROR:", err);
+
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
 
 app.post("/api/ai/chat", async (req, res) => {
   const { messages } = req.body;
@@ -198,68 +285,25 @@ app.delete("/api/portfolio/:id", async (req, res) => {
    📜 TRANSACTIONS
 ========================= */
 app.get("/api/transactions/:userId", async (req, res) => {
-  const data = await Transaction.find({ userId: req.params.userId }).sort({ date: -1 });
-  res.json(data);
+  try {
+    const data = await Transaction.find({
+      userId: req.params.userId
+    }).sort({ date: -1 });
+
+    console.log("Transactions:", data);
+
+    res.json(data);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Transaction fetch failed ❌" });
+  }
 });
 
 /* =========================
    🤖 AI CHAT (Gemini)
 ========================= */
-app.post("/api/ai/chat", async (req, res) => {
-  const { messages } = req.body;
 
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: "Invalid messages ❌" });
-  }
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_KEY}`,
-      {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{
-              text: `You are CryptoAI — an expert cryptocurrency assistant for CryptoTrack Pro app.
-You help users with:
-- Crypto price analysis and market trends
-- Portfolio management advice (buy/sell/hold)
-- Explanation of blockchain concepts
-- DeFi, NFT, and Web3 questions
-- Risk assessment and investment strategies
-- Understanding crypto terms and indicators
-
-Keep responses concise, friendly, and actionable.
-Use emojis occasionally to make responses engaging.
-Format important points with bullet points when needed.
-Always remind users that crypto is volatile and to do their own research (DYOR).`
-            }]
-          },
-          contents: messages,
-          generationConfig: {
-            temperature:     0.7,
-            maxOutputTokens: 600,
-          },
-        }),
-      }
-    );
-
-    const data  = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!reply) {
-      console.log("Gemini error:", JSON.stringify(data));
-      return res.status(500).json({ error: "No reply from AI" });
-    }
-
-    res.json({ reply });
-
-  } catch (err) {
-    console.log("AI route error:", err);
-    res.status(500).json({ error: "AI error ❌" });
-  }
-});
 
 /* =========================
    🚀 START SERVER

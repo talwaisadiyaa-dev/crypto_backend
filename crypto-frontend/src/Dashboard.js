@@ -100,27 +100,71 @@ function TradeModal({ item, mode, onClose, onDone }) {
   const execPrice  = orderType === "market" ? item.currentPrice : Number(limitPrice);
   const totalValue = (Number(qty) || 0) * (execPrice || 0);
 
-  const handleSubmit = async () => {
-    if (!qty || isNaN(qty) || Number(qty) <= 0)
-      return toast.error("Enter valid quantity");
-    if (orderType === "limit" && (!limitPrice || isNaN(limitPrice) || Number(limitPrice) <= 0))
-      return toast.error("Enter valid limit price");
-    const userId = localStorage.getItem("userId");
-    setLoading(true);
-    try {
-      await fetch(isBuy ? "https://crypto-backend-2ryf.onrender.com/api/portfolio/buy" : "https://crypto-backend-2ryf.onrender.com/api/portfolio/sell", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coin: item.coin, price: execPrice, quantity: Number(qty), userId, orderType }),
-      });
-      toast.success(isBuy
-        ? `Bought ${qty} ${item.coin.toUpperCase()} @ $${execPrice.toFixed(2)} ✅`
-        : `Sold ${qty} ${item.coin.toUpperCase()} @ $${execPrice.toFixed(2)} 💰`);
-      onDone(); onClose();
-    } catch { toast.error("Order failed ❌"); }
-    finally  { setLoading(false); }
-  };
+ const handleSubmit = async () => {
 
+  if (!qty || isNaN(qty) || Number(qty) <= 0)
+    return toast.error("Enter valid quantity");
+
+  if (
+    orderType === "limit" &&
+    (!limitPrice || isNaN(limitPrice) || Number(limitPrice) <= 0)
+  )
+    return toast.error("Enter valid limit price");
+
+  const userId = localStorage.getItem("userId");
+
+  setLoading(true);
+
+  try {
+
+    const response = await fetch(
+      isBuy
+        ? "https://crypto-backend-2ryf.onrender.com/api/portfolio/buy"
+        : "https://crypto-backend-2ryf.onrender.com/api/portfolio/sell",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          coin: item.coin,
+          price: execPrice,
+          quantity: Number(qty),
+          userId,
+          orderType
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log(data);
+
+    if (!response.ok) {
+      return toast.error(data.error || "Order failed ❌");
+    }
+
+    toast.success(
+      isBuy
+        ? `Bought ${qty} ${item.coin.toUpperCase()} @ $${execPrice.toFixed(2)} ✅`
+        : `Sold ${qty} ${item.coin.toUpperCase()} @ $${execPrice.toFixed(2)} 💰`
+    );
+
+    onDone();
+    onClose();
+
+  } catch (err) {
+
+    console.log(err);
+
+    toast.error("Order failed ❌");
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
@@ -361,6 +405,11 @@ export default function Dashboard() {
   const profitLoss      = totalCurrent - totalInvestment;
   const profitPercent   = totalInvestment ? ((profitLoss / totalInvestment) * 100).toFixed(2) : 0;
 
+  const filteredHistory = history.filter(h => {
+  if (activeTab === "ALL") return true;
+  return h.type?.toUpperCase() === activeTab;
+});
+
   const sortedPL  = [...portfolio].sort((a, b) => (b.currentPrice - b.price) * b.quantity - (a.currentPrice - a.price) * a.quantity);
   const bestCoin  = sortedPL[0];
   const worstCoin = sortedPL[sortedPL.length - 1];
@@ -473,8 +522,7 @@ export default function Dashboard() {
     pdf.save(`Crypto_Report_${reportId}.pdf`);
   };
 
-  const filteredHistory = activeTab === "ALL" ? history : history.filter(h => h.type === activeTab);
-
+  
   /* ========================= RENDER ========================= */
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-6">
@@ -816,7 +864,7 @@ export default function Dashboard() {
             {filteredHistory.map((h, i) => (
               <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <span className={`w-14 text-center text-xs font-bold py-1 rounded-lg ${h.type === "BUY" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{h.type}</span>
+                  <span className={`w-14 text-center text-xs font-bold py-1 rounded-lg ${h.type?.toUpperCase() === "BUY" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{h.type?.toUpperCase()}</span>
                   <div>
                     <p className="font-semibold text-sm text-gray-800">{h.coin?.toUpperCase()}</p>
                     <p className="text-xs text-gray-400">{new Date(h.date).toLocaleString()}</p>

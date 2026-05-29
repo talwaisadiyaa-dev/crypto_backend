@@ -198,7 +198,7 @@ function Landing() {
           <motion.div className="grid md:grid-cols-3 gap-5 mb-8" initial="hidden" whileInView="visible" variants={containerVariants} viewport={{ once: true }}>
             {[
               { icon: "🎓", iconBg: "bg-blue-100 text-blue-600",   bg: "bg-blue-50 border-blue-100",   label: "Education",  title: "Nehru BBA & BCA College",        desc: "Pursuing my degree while building real-world projects" },
-              { icon: "🏢", iconBg: "bg-indigo-100 text-indigo-600", bg: "bg-indigo-50 border-indigo-100", label: "Company",   title: "Ultimez Technology",             desc: "Working as a Full-Stack Developer on modern web apps"  },
+              { icon: "🏢", iconBg: "bg-indigo-100 text-indigo-600", bg: "bg-indigo-50 border-indigo-100", label: "Company",   title: "Ultimez Technology",               },
               { icon: "🛠️", iconBg: "bg-violet-100 text-violet-600", bg: "bg-violet-50 border-violet-100", label: "Tech Stack", title: "React · Node · MongoDB",         desc: "Tailwind CSS · JWT Auth · CoinGecko API"               },
             ].map((c, i) => (
               <motion.div key={i} variants={itemVariants}
@@ -276,7 +276,7 @@ function Landing() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-6 text-center text-sm">
-            <p>© 2026 CryptoTrack Pro · Built with 💙 by <strong className="text-white">Sadiya </strong> · Ultimez Technology</p>
+            <p>© 2026 CryptoTrack Pro · Built with by <strong className="text-white">Sadiya </strong> </p>
           </div>
         </div>
       </footer>
